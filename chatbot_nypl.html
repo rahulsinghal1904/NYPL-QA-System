@@ -1,0 +1,144 @@
+{% extends "DigiSuiteClassifier/base.html" %}
+{% load static %}
+{% block content %}
+<div class="container">
+  <div class="row mt-5 mb-0 justify-content-center">
+    <div class="col-md-8">
+      <div class="card border-dark bg-light mt-5 mb-3">
+        <div class="card-header border-dark text-center">
+          <h5><b>NYPL Chatbot</b></h5>
+        </div>
+        <div class="card-body text-dark border-dark">
+          <div class="chat-container">
+            <div id="chat-box" class="chat-box mb-4 p-3 border rounded bg-white">
+              <!-- Chat history will appear here -->
+            </div>
+            <form id="upload-form" enctype="multipart/form-data" class="mb-4">
+              {% csrf_token %}
+              <div class="mb-3">
+                <label for="documents" class="form-label">Upload Collections:</label>
+                <input type="file" class="form-control" id="documents" name="documents" multiple>
+              </div>
+              <button type="submit" class="btn btn-primary">Process Documents</button>
+            </form>
+            <form id="question-form">
+              {% csrf_token %}
+              <div class="input-group">
+                <input type="text" class="form-control" id="question" name="question" placeholder="Ask your question...">
+                <button type="submit" class="btn btn-success">Send</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        <!-- 
+        <div class="card-footer text-muted d-flex my-0 justify-content-between bg-transparent border-top-0">
+          <div class="stats">
+            Card Footer
+          </div>
+        </div>
+        -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Custom styles can be added here or moved to a separate CSS file */
+  .chat-box {
+    height: 300px;
+    overflow-y: auto;
+    background-color: #f8f9fa;
+  }
+  .chat-box .user {
+    text-align: right;
+    color: blue;
+    margin: 5px 0;
+  }
+  .chat-box .bot {
+    text-align: left;
+    color: green;
+    margin: 5px 0;
+  }
+</style>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const chatBox = document.getElementById("chat-box");
+    const questionForm = document.getElementById("question-form");
+    const uploadForm = document.getElementById("upload-form");
+
+    // Function to append messages to chat box
+    function appendMessage(message, sender) {
+      const p = document.createElement("p");
+      p.classList.add(sender);
+      p.textContent = message;
+      chatBox.appendChild(p);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    // Handle document upload
+    uploadForm.onsubmit = function(event) {
+      event.preventDefault();
+      const formData = new FormData(this);
+      // Add the CSRF token from the form to formData explicitly
+      const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+      formData.append("csrfmiddlewaretoken", csrfToken);
+
+      fetch("{% url 'chatbot-nypl' %}", {
+        method: "POST",
+        body: formData
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.error) {
+          appendMessage(`Error: ${data.error}`, 'bot');
+        } else if (data.message) {
+          appendMessage(data.message, 'bot');
+        }
+      })
+      .catch(error => {
+        appendMessage(`Error: ${error.message}`, 'bot');
+      });
+    };
+
+    // Handle question submission
+    questionForm.onsubmit = function(event) {
+      event.preventDefault();
+      const questionInput = document.getElementById("question");
+      const question = questionInput.value.trim();
+      if (!question) return;
+
+      // Display user's question in chat
+      appendMessage(question, 'user');
+      // Clear the input
+      questionInput.value = "";
+
+      const formData = new FormData();
+      const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+      formData.append("csrfmiddlewaretoken", csrfToken);
+      formData.append("question", question);
+
+      fetch("{% url 'chatbot-nypl' %}", {
+        method: "POST",
+        body: formData
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.error) {
+          appendMessage(`Error: ${data.error}`, 'bot');
+        } else if (data.answer) {
+          appendMessage(data.answer, 'bot');
+          
+          // If source documents are provided, list them
+        } else if (data.message) {
+          // We got a message prompt (e.g., asking if the user wants to use the collection)
+          appendMessage(data.message, 'bot');
+        }
+      })
+      .catch(error => {
+        appendMessage(`Error: ${error.message}`, 'bot');
+      });
+    };
+  });
+</script>
+{% endblock content %}
