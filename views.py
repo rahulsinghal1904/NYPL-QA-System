@@ -33,6 +33,7 @@ from django.http import JsonResponse
 from DigiSuiteClassifier.scripts.collection.ChatBot import handle_chatbot_action
 from DigiSuiteClassifier.scripts.collection.Chatbot_NYPL import handle_chatbot_action_test
 from FaceDetect.models import FaceDetect
+from security import safe_command
 
 # Create your views here.
 User = get_user_model()
@@ -76,9 +77,9 @@ def run_script(script_name, script_path, script_args, new_thread = False):
     print(f"--------- CMD :  {cmd}")
     logger.info("CMD: " + cmd)
     if(new_thread):
-        subprocess.Popen("exec " + cmd, shell=True, executable='/bin/bash')
+        safe_command.run(subprocess.Popen, "exec " + cmd, shell=True, executable='/bin/bash')
     else:
-        subprocess.run(cmd, capture_output=False, shell=True, executable='/bin/bash')
+        safe_command.run(subprocess.run, cmd, capture_output=False, shell=True, executable='/bin/bash')
     #output = subprocess.run(cmd, capture_output=True, shell=True, executable='/bin/bash', timeout=1800)
     #logger.info("SCRIPT COMPLETED with output: " + output)
     #return output
