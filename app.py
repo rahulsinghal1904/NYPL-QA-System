@@ -62,7 +62,7 @@ def query_ollama(prompt):
             OLLAMA_API_URL,
             json={"model": model_name, "prompt": prompt},
             stream=True,
-        )
+        timeout=60)
         response.raise_for_status()
 
         final_response = ""
